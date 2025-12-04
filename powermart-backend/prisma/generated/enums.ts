@@ -25,3 +25,30 @@ export const AccountStatus = {
 } as const
 
 export type AccountStatus = (typeof AccountStatus)[keyof typeof AccountStatus]
+
+
+export const KYCDocumentType = {
+  CNIC: 'CNIC',
+  PASSPORT: 'PASSPORT',
+  LICENSE: 'LICENSE'
+} as const
+
+export type KYCDocumentType = (typeof KYCDocumentType)[keyof typeof KYCDocumentType]
+
+
+export const KYCStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED'
+} as const
+
+export type KYCStatus = (typeof KYCStatus)[keyof typeof KYCStatus]
+
+
+export const ProductStatus = {
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE'
+} as const
+
+export type ProductStatus = (typeof ProductStatus)[keyof typeof ProductStatus]

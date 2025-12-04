@@ -20,7 +20,7 @@ const config: runtime.GetPrismaClientConfig = {
   "clientVersion": "7.0.1",
   "engineVersion": "f09f2815f091dbba658cdcd2264306d88bb5bda6",
   "activeProvider": "postgresql",
-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"./generated\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\nenum UserRole {\n  USER\n  VENDOR\n  ADMIN\n}\n\nenum AccountStatus {\n  ACTIVE\n  INACTIVE\n  SUSPENDED\n}\n\nmodel User {\n  id            Int            @id @default(autoincrement())\n  email         String         @unique\n  password      String\n  name          String?\n  role          UserRole       @default(USER)\n  status        AccountStatus  @default(ACTIVE)\n  isVerified    Boolean        @default(false)\n  createdAt     DateTime       @default(now())\n  updatedAt     DateTime       @updatedAt\n  refreshTokens RefreshToken[]\n\n  @@index([email])\n  @@map(\"users\")\n}\n\nmodel RefreshToken {\n  id        String   @id @default(uuid())\n  token     String   @unique\n  userId    Int\n  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n\n  @@index([userId])\n  @@index([token])\n  @@map(\"refresh_tokens\")\n}\n",
+  "inlineSchema": "// ---------------------\n//  Prisma Generator\n// ---------------------\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"./generated\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\n// ---------------------\n// Enumerations\n// ---------------------\nenum UserRole {\n  USER\n  VENDOR\n  ADMIN\n}\n\nenum AccountStatus {\n  ACTIVE\n  INACTIVE\n  SUSPENDED\n}\n\nenum KYCDocumentType {\n  CNIC\n  PASSPORT\n  LICENSE\n}\n\nenum KYCStatus {\n  PENDING\n  APPROVED\n  REJECTED\n}\n\nenum ProductStatus {\n  DRAFT\n  ACTIVE\n  INACTIVE\n}\n\n// ---------------------\n// User & Auth\n// ---------------------\nmodel User {\n  id         String        @id @default(uuid())\n  email      String        @unique\n  password   String\n  name       String?\n  role       UserRole      @default(USER)\n  isVendor   Boolean       @default(false)\n  isAdmin    Boolean       @default(false)\n  status     AccountStatus @default(ACTIVE)\n  isVerified Boolean       @default(false)\n  createdAt  DateTime      @default(now())\n  updatedAt  DateTime      @updatedAt\n\n  refreshTokens RefreshToken[]\n  vendor        Vendor?\n\n  @@index([email])\n  @@map(\"users\")\n}\n\nmodel RefreshToken {\n  id        String   @id @default(uuid())\n  token     String   @unique\n  userId    String\n  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n\n  @@index([userId])\n  @@index([token])\n  @@map(\"refresh_tokens\")\n}\n\n// ---------------------\n// Vendor Data Layer\n// ---------------------\nmodel Vendor {\n  id     String @id @default(uuid())\n  userId String @unique\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)\n\n  name          String\n  phoneNumber   String  @unique\n  phoneVerified Boolean @default(false)\n  address       String?\n  website       String?\n\n  shops     Shop[]\n  kyc       VendorKYC?\n  phoneOTPs PhoneOTP[]\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([userId])\n  @@map(\"vendors\")\n}\n\n// ---------------------\n// Vendor KYC (Main)\n// ---------------------\nmodel VendorKYC {\n  id       String @id @default(uuid())\n  vendorId String @unique\n  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)\n\n  status      KYCStatus @default(PENDING)\n  submittedAt DateTime  @default(now())\n  reviewedAt  DateTime?\n\n  documents   KYCDocument[]\n  bankDetails VendorBankDetails[]\n\n  @@index([vendorId])\n  @@map(\"vendor_kyc\")\n}\n\n// ---------------------\n// KYC Documents (Multiple)\n// ---------------------\nmodel KYCDocument {\n  id             String          @id @default(uuid())\n  kycId          String\n  kyc            VendorKYC       @relation(fields: [kycId], references: [id], onDelete: Cascade)\n  documentType   KYCDocumentType\n  documentNumber String\n  frontImageURL  String?\n  backImageURL   String?\n\n  uploadedAt DateTime @default(now())\n\n  @@index([kycId])\n  @@map(\"kyc_documents\")\n}\n\n// ---------------------\n// Vendor Bank Details\n// ---------------------\nmodel VendorBankDetails {\n  id    String    @id @default(uuid())\n  kycId String\n  kyc   VendorKYC @relation(fields: [kycId], references: [id], onDelete: Cascade)\n\n  accountTitle  String\n  bankName      String\n  branchName    String?\n  branchCode    String?\n  iban          String?\n  accountNumber String\n\n  isPrimary Boolean @default(false)\n\n  createdAt DateTime @default(now())\n\n  @@index([kycId])\n  @@map(\"vendor_bank_details\")\n}\n\n// ---------------------\n// OTP for Phone Verification\n// ---------------------\nmodel PhoneOTP {\n  id          String @id @default(uuid())\n  vendorId    String\n  phoneNumber String\n\n  otpCode   String\n  expiresAt DateTime\n  verified  Boolean  @default(false)\n  attempts  Int      @default(0)\n\n  createdAt DateTime @default(now())\n\n  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)\n\n  @@index([vendorId])\n  @@index([phoneNumber])\n  @@map(\"phone_otp\")\n}\n\n// ---------------------\n// Shops\n// ---------------------\nmodel Shop {\n  id       String @id @default(uuid())\n  vendorId String\n  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)\n\n  name        String\n  description String?\n  address     String?\n  logo        String?\n\n  products Product[]\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([vendorId])\n  @@map(\"shops\")\n}\n\n// ---------------------\n// Products\n// ---------------------\nmodel Product {\n  id     String @id @default(uuid())\n  shopId String\n  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)\n\n  name        String\n  description String?\n  price       Float\n  discount    Float?\n  status      ProductStatus @default(ACTIVE)\n\n  stock Int     @default(0)\n  sku   String? @unique\n\n  categoryId String?\n  category   Category? @relation(fields: [categoryId], references: [id])\n\n  images   ProductImage[]\n  variants ProductVariant[]\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([shopId])\n  @@index([categoryId])\n  @@map(\"products\")\n}\n\n// ---------------------\n// Product Images\n// ---------------------\nmodel ProductImage {\n  id        String  @id @default(uuid())\n  productId String\n  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)\n\n  url String\n\n  createdAt DateTime @default(now())\n\n  @@index([productId])\n  @@map(\"product_images\")\n}\n\n// ---------------------\n// Product Variants\n// ---------------------\nmodel ProductVariant {\n  id        String  @id @default(uuid())\n  productId String\n  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)\n\n  name      String\n  value     String\n  priceDiff Float?\n  stock     Int    @default(0)\n\n  createdAt DateTime @default(now())\n\n  @@index([productId])\n  @@map(\"product_variants\")\n}\n\n// ---------------------\n// Category System\n// ---------------------\nmodel Category {\n  id       String    @id @default(uuid())\n  name     String    @unique\n  products Product[]\n\n  @@map(\"categories\")\n}\n",
   "runtimeDataModel": {
     "models": {},
     "enums": {},
@@ -28,7 +28,7 @@ const config: runtime.GetPrismaClientConfig = {
   }
 }
 
-config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"password\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"role\",\"kind\":\"enum\",\"type\":\"UserRole\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"AccountStatus\"},{\"name\":\"isVerified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"refreshTokens\",\"kind\":\"object\",\"type\":\"RefreshToken\",\"relationName\":\"RefreshTokenToUser\"}],\"dbName\":\"users\"},\"RefreshToken\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"RefreshTokenToUser\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":\"refresh_tokens\"}},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"password\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"role\",\"kind\":\"enum\",\"type\":\"UserRole\"},{\"name\":\"isVendor\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"isAdmin\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"AccountStatus\"},{\"name\":\"isVerified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"refreshTokens\",\"kind\":\"object\",\"type\":\"RefreshToken\",\"relationName\":\"RefreshTokenToUser\"},{\"name\":\"vendor\",\"kind\":\"object\",\"type\":\"Vendor\",\"relationName\":\"UserToVendor\"}],\"dbName\":\"users\"},\"RefreshToken\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"RefreshTokenToUser\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":\"refresh_tokens\"},\"Vendor\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"UserToVendor\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"phoneNumber\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"phoneVerified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"address\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"website\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"shops\",\"kind\":\"object\",\"type\":\"Shop\",\"relationName\":\"ShopToVendor\"},{\"name\":\"kyc\",\"kind\":\"object\",\"type\":\"VendorKYC\",\"relationName\":\"VendorToVendorKYC\"},{\"name\":\"phoneOTPs\",\"kind\":\"object\",\"type\":\"PhoneOTP\",\"relationName\":\"PhoneOTPToVendor\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":\"vendors\"},\"VendorKYC\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"vendorId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"vendor\",\"kind\":\"object\",\"type\":\"Vendor\",\"relationName\":\"VendorToVendorKYC\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"KYCStatus\"},{\"name\":\"submittedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"reviewedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"documents\",\"kind\":\"object\",\"type\":\"KYCDocument\",\"relationName\":\"KYCDocumentToVendorKYC\"},{\"name\":\"bankDetails\",\"kind\":\"object\",\"type\":\"VendorBankDetails\",\"relationName\":\"VendorBankDetailsToVendorKYC\"}],\"dbName\":\"vendor_kyc\"},\"KYCDocument\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"kycId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"kyc\",\"kind\":\"object\",\"type\":\"VendorKYC\",\"relationName\":\"KYCDocumentToVendorKYC\"},{\"name\":\"documentType\",\"kind\":\"enum\",\"type\":\"KYCDocumentType\"},{\"name\":\"documentNumber\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"frontImageURL\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"backImageURL\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"uploadedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":\"kyc_documents\"},\"VendorBankDetails\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"kycId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"kyc\",\"kind\":\"object\",\"type\":\"VendorKYC\",\"relationName\":\"VendorBankDetailsToVendorKYC\"},{\"name\":\"accountTitle\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"bankName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"branchName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"branchCode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"iban\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accountNumber\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"isPrimary\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":\"vendor_bank_details\"},\"PhoneOTP\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"vendorId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"phoneNumber\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"otpCode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"verified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"attempts\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"vendor\",\"kind\":\"object\",\"type\":\"Vendor\",\"relationName\":\"PhoneOTPToVendor\"}],\"dbName\":\"phone_otp\"},\"Shop\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"vendorId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"vendor\",\"kind\":\"object\",\"type\":\"Vendor\",\"relationName\":\"ShopToVendor\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"address\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"logo\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"products\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"ProductToShop\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":\"shops\"},\"Product\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"shopId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"shop\",\"kind\":\"object\",\"type\":\"Shop\",\"relationName\":\"ProductToShop\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"price\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"discount\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"ProductStatus\"},{\"name\":\"stock\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"sku\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"categoryId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"category\",\"kind\":\"object\",\"type\":\"Category\",\"relationName\":\"CategoryToProduct\"},{\"name\":\"images\",\"kind\":\"object\",\"type\":\"ProductImage\",\"relationName\":\"ProductToProductImage\"},{\"name\":\"variants\",\"kind\":\"object\",\"type\":\"ProductVariant\",\"relationName\":\"ProductToProductVariant\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":\"products\"},\"ProductImage\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"productId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"product\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"ProductToProductImage\"},{\"name\":\"url\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":\"product_images\"},\"ProductVariant\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"productId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"product\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"ProductToProductVariant\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"value\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"priceDiff\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"stock\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":\"product_variants\"},\"Category\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"products\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"CategoryToProduct\"}],\"dbName\":\"categories\"}},\"enums\":{},\"types\":{}}")
 
 async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Module> {
   const { Buffer } = await import('node:buffer')
@@ -193,6 +193,106 @@ export interface PrismaClient<
     * ```
     */
   get refreshToken(): Prisma.RefreshTokenDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.vendor`: Exposes CRUD operations for the **Vendor** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Vendors
+    * const vendors = await prisma.vendor.findMany()
+    * ```
+    */
+  get vendor(): Prisma.VendorDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.vendorKYC`: Exposes CRUD operations for the **VendorKYC** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more VendorKYCS
+    * const vendorKYCS = await prisma.vendorKYC.findMany()
+    * ```
+    */
+  get vendorKYC(): Prisma.VendorKYCDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.kYCDocument`: Exposes CRUD operations for the **KYCDocument** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more KYCDocuments
+    * const kYCDocuments = await prisma.kYCDocument.findMany()
+    * ```
+    */
+  get kYCDocument(): Prisma.KYCDocumentDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.vendorBankDetails`: Exposes CRUD operations for the **VendorBankDetails** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more VendorBankDetails
+    * const vendorBankDetails = await prisma.vendorBankDetails.findMany()
+    * ```
+    */
+  get vendorBankDetails(): Prisma.VendorBankDetailsDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.phoneOTP`: Exposes CRUD operations for the **PhoneOTP** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more PhoneOTPS
+    * const phoneOTPS = await prisma.phoneOTP.findMany()
+    * ```
+    */
+  get phoneOTP(): Prisma.PhoneOTPDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.shop`: Exposes CRUD operations for the **Shop** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Shops
+    * const shops = await prisma.shop.findMany()
+    * ```
+    */
+  get shop(): Prisma.ShopDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.product`: Exposes CRUD operations for the **Product** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Products
+    * const products = await prisma.product.findMany()
+    * ```
+    */
+  get product(): Prisma.ProductDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.productImage`: Exposes CRUD operations for the **ProductImage** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ProductImages
+    * const productImages = await prisma.productImage.findMany()
+    * ```
+    */
+  get productImage(): Prisma.ProductImageDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.productVariant`: Exposes CRUD operations for the **ProductVariant** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ProductVariants
+    * const productVariants = await prisma.productVariant.findMany()
+    * ```
+    */
+  get productVariant(): Prisma.ProductVariantDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.category`: Exposes CRUD operations for the **Category** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Categories
+    * const categories = await prisma.category.findMany()
+    * ```
+    */
+  get category(): Prisma.CategoryDelegate<ExtArgs, { omit: OmitOpts }>;
 }
 
 export function getPrismaClientClass(): PrismaClientConstructor {

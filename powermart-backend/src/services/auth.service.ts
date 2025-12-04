@@ -221,7 +221,7 @@ export async function logoutUser(token: string): Promise<void> {
 /**
  * Get user by ID
  */
-export async function getUserById(userId: number): Promise<UserResponse | null> {
+export async function getUserById(userId: string): Promise<UserResponse | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });

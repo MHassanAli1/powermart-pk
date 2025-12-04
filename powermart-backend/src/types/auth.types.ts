@@ -19,7 +19,7 @@ export interface RefreshTokenRequest {
 
 // Response DTOs
 export interface UserResponse {
-  id: number;
+  id: string;
   email: string;
   name: string | null;
   role: UserRole;
@@ -42,12 +42,12 @@ export interface TokenResponse {
 
 // JWT Payload
 export interface JwtPayload {
-  userId: number;
+  userId: string;
   email: string;
   role: UserRole;
 }
 
 export interface RefreshTokenPayload {
-  userId: number;
+  userId: string;
   tokenId: string;
 }

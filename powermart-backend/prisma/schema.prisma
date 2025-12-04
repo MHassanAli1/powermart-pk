@@ -95,6 +95,7 @@ model Vendor {
 
   shops       Shop[]
   kyc         VendorKYC?
+  phoneOTPs   PhoneOTP[]
 
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -133,7 +134,6 @@ model KYCDocument {
   documentNumber String
   frontImageURL  String?
   backImageURL   String?
-  frontImageURL String?
 
   uploadedAt     DateTime          @default(now())
 
@@ -275,12 +275,30 @@ model ProductVariant {
 }
 
 // ---------------------
-// Category System
+// Category System (Hierarchical)
 // ---------------------
 model Category {
-  id       String       @id @default(uuid())
-  name     String       @unique
-  products Product[]
+  id          String       @id @default(uuid())
+  name        String
+  slug        String       @unique
+  description String?
+  image       String?
+  
+  // Self-referential relation for subcategories
+  parentId    String?
+  parent      Category?    @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[]   @relation("CategoryHierarchy")
+  
+  // Products in this category
+  products    Product[]
+  
+  isActive    Boolean      @default(true)
+  sortOrder   Int          @default(0)
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
+  @@index([parentId])
+  @@index([slug])
   @@map("categories")
 }

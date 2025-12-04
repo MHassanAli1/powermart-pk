@@ -27,3 +27,53 @@ export type User = Prisma.UserModel
  * 
  */
 export type RefreshToken = Prisma.RefreshTokenModel
+/**
+ * Model Vendor
+ * 
+ */
+export type Vendor = Prisma.VendorModel
+/**
+ * Model VendorKYC
+ * 
+ */
+export type VendorKYC = Prisma.VendorKYCModel
+/**
+ * Model KYCDocument
+ * 
+ */
+export type KYCDocument = Prisma.KYCDocumentModel
+/**
+ * Model VendorBankDetails
+ * 
+ */
+export type VendorBankDetails = Prisma.VendorBankDetailsModel
+/**
+ * Model PhoneOTP
+ * 
+ */
+export type PhoneOTP = Prisma.PhoneOTPModel
+/**
+ * Model Shop
+ * 
+ */
+export type Shop = Prisma.ShopModel
+/**
+ * Model Product
+ * 
+ */
+export type Product = Prisma.ProductModel
+/**
+ * Model ProductImage
+ * 
+ */
+export type ProductImage = Prisma.ProductImageModel
+/**
+ * Model ProductVariant
+ * 
+ */
+export type ProductVariant = Prisma.ProductVariantModel
+/**
+ * Model Category
+ * 
+ */
+export type Category = Prisma.CategoryModel
