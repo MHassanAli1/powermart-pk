@@ -5,6 +5,7 @@ import vendorRoutes from './vendor.routes.ts';
 import shopRoutes from './shop.routes.ts';
 import productRoutes from './product.routes.ts';
 import categoryRoutes from './category.routes.ts';
+import orderRoutes from './order.routes.ts';
 
 const router = Router();
 
@@ -15,5 +16,6 @@ router.use('/vendors', vendorRoutes);
 router.use('/shops', shopRoutes);
 router.use('/vendor', productRoutes); // Product routes under /vendor prefix
 router.use('/categories', categoryRoutes);
+router.use('/orders', orderRoutes);
 
 export default router;
