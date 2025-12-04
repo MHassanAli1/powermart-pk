@@ -1,6 +1,6 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../types/express.types.ts';
-import { prisma } from '../../utils/prisma.ts';
+import type { Response } from 'express';
+import type { AuthenticatedRequest } from '../types/express.types.ts';
+import { prisma } from '../../lib/prisma.ts';
 
 /**
  * Get all users (Admin only)

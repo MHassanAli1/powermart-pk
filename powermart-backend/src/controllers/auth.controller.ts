@@ -1,5 +1,5 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../types/express.types.ts';
+import type { Response } from 'express';
+import type { AuthenticatedRequest } from '../types/express.types.ts';
 import {
   registerUser,
   loginUser,
@@ -7,7 +7,7 @@ import {
   logoutUser,
   getUserById,
 } from '../services/auth.service.ts';
-import { RegisterRequest, LoginRequest, RefreshTokenRequest } from '../types/auth.types.ts';
+import type { RegisterRequest, LoginRequest, RefreshTokenRequest } from '../types/auth.types.ts';
 
 /**
  * Register a new user

@@ -6,7 +6,7 @@ import {
   deleteUser,
 } from '../controllers/user.controller.ts';
 import { authenticate, authorize } from '../middleware/auth.middleware.ts';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../../prisma/generated/enums.ts';
 
 const router = Router();
 

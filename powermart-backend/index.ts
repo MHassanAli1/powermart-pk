@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import { prisma } from './utils/prisma.ts';
+import { prisma } from './lib/prisma.ts';
 import routes from './src/routes/index.ts';
 import { errorHandler, notFoundHandler } from './src/middleware/error.middleware.ts';
 

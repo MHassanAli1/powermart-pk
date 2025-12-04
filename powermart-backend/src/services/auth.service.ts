@@ -1,4 +1,4 @@
-import { prisma } from '../../utils/prisma.ts';
+import { prisma } from '../../lib/prisma.ts';
 import { hashPassword, comparePassword, validatePassword } from '../utils/password.util.ts';
 import {
   generateAccessToken,
@@ -6,14 +6,15 @@ import {
   verifyRefreshToken,
   getRefreshTokenExpiration,
 } from '../utils/jwt.util.ts';
-import {
+import type {
   RegisterRequest,
   LoginRequest,
   AuthResponse,
   UserResponse,
   TokenResponse,
 } from '../types/auth.types.ts';
-import { User, UserRole } from '@prisma/client';
+import { type User } from '../../prisma/generated/client.ts';
+import { UserRole } from '../../prisma/generated/enums.ts';
 
 /**
  * Convert User to UserResponse (exclude password)
@@ -60,7 +61,7 @@ export async function registerUser(data: RegisterRequest): Promise<AuthResponse>
     data: {
       email,
       password: hashedPassword,
-      name,
+      name: name ?? null,
       role,
     },
   });

@@ -1,7 +1,7 @@
-import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest } from '../types/express.types.ts';
+import type { Response, NextFunction } from 'express';
+import type { AuthenticatedRequest } from '../types/express.types.ts';
 import { verifyAccessToken } from '../utils/jwt.util.ts';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../../prisma/generated/enums.ts';
 
 /**
  * Authentication middleware - verifies JWT token

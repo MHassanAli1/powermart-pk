@@ -1,10 +1,11 @@
 import jwt from 'jsonwebtoken';
-import { JwtPayload, RefreshTokenPayload } from '../types/auth.types.ts';
+import type { SignOptions } from 'jsonwebtoken';
+import type { JwtPayload, RefreshTokenPayload } from '../types/auth.types.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '15m';
+const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN ?? '7d';
 
 /**
  * Generate an access token
@@ -12,7 +13,7 @@ const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 export function generateAccessToken(payload: JwtPayload): string {
   return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
-  });
+  } as SignOptions);
 }
 
 /**
@@ -21,7 +22,7 @@ export function generateAccessToken(payload: JwtPayload): string {
 export function generateRefreshToken(payload: RefreshTokenPayload): string {
   return jwt.sign(payload, JWT_REFRESH_SECRET, {
     expiresIn: JWT_REFRESH_EXPIRES_IN,
-  });
+  } as SignOptions);
 }
 
 /**
@@ -58,8 +59,8 @@ export function getRefreshTokenExpiration(): Date {
     return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   }
 
-  const value = parseInt(match[1], 10);
-  const unit = match[2];
+  const value = parseInt(match[1]!, 10);
+  const unit = match[2]!;
 
   const now = Date.now();
   let milliseconds = 0;

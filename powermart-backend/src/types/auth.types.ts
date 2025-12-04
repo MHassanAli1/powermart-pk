@@ -1,4 +1,4 @@
-import { UserRole, AccountStatus } from '@prisma/client';
+import { UserRole, AccountStatus } from '../../prisma/generated/enums.ts';
 
 // Request DTOs
 export interface RegisterRequest {
