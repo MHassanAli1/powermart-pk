@@ -43,6 +43,27 @@ enum ProductStatus {
   INACTIVE
 }
 
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  COD
+  CARD
+}
+
 // ---------------------
 // User & Auth
 // ---------------------
@@ -59,8 +80,10 @@ model User {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
-  refreshTokens RefreshToken[]
-  vendor        Vendor?
+  refreshTokens  RefreshToken[]
+  vendor         Vendor?
+  orders         Order[]
+  orderAddresses OrderAddress[]
 
   @@index([email])
   @@map("users")
@@ -200,6 +223,7 @@ model Shop {
   logo        String?
 
   products    Product[]
+  orderItems  OrderItem[]
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -230,6 +254,7 @@ model Product {
 
   images      ProductImage[]
   variants    ProductVariant[]
+  orderItems  OrderItem[]
 
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -268,6 +293,8 @@ model ProductVariant {
   priceDiff   Float?
   stock       Int         @default(0)
 
+  orderItems  OrderItem[]
+
   createdAt   DateTime    @default(now())
 
   @@index([productId])
@@ -303,33 +330,8 @@ model Category {
   @@map("categories")
 }
 
-
 // ---------------------
-// Enumerations (additions)
-// ---------------------
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  SHIPPED
-  DELIVERED
-  CANCELLED
-  RETURNED
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  FAILED
-  REFUNDED
-}
-
-enum PaymentMethod {
-  COD
-  CARD
-}
-
-// ---------------------
-// Order Address (per-order snapshot)
+// Order Address
 // ---------------------
 model OrderAddress {
   id          String   @id @default(uuid())
