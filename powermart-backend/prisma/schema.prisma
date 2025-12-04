@@ -1,9 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+// ---------------------
+//  Prisma Generator
+// ---------------------
 generator client {
   provider = "prisma-client"
   output   = "./generated"
@@ -13,6 +10,9 @@ datasource db {
   provider = "postgresql"
 }
 
+// ---------------------
+// Enumerations
+// ---------------------
 enum UserRole {
   USER
   VENDOR
@@ -25,17 +25,42 @@ enum AccountStatus {
   SUSPENDED
 }
 
+enum KYCDocumentType {
+  CNIC
+  PASSPORT
+  LICENSE
+}
+
+enum KYCStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+}
+
+// ---------------------
+// User & Auth
+// ---------------------
 model User {
-  id            Int           @id @default(autoincrement())
-  email         String        @unique
+  id            String           @id @default(uuid())
+  email         String           @unique
   password      String
   name          String?
-  role          UserRole      @default(USER)
-  status        AccountStatus @default(ACTIVE)
-  isVerified    Boolean       @default(false)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  role          UserRole         @default(USER)
+  isVendor      Boolean          @default(false)
+  isAdmin       Boolean          @default(false)
+  status        AccountStatus    @default(ACTIVE)
+  isVerified    Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
   refreshTokens RefreshToken[]
+  vendor        Vendor?
 
   @@index([email])
   @@map("users")
@@ -44,7 +69,7 @@ model User {
 model RefreshToken {
   id        String   @id @default(uuid())
   token     String   @unique
-  userId    Int
+  userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -54,3 +79,208 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+// ---------------------
+// Vendor Data Layer
+// ---------------------
+model Vendor {
+  id          String       @id @default(uuid())
+  userId      String       @unique
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  phoneNumber    String    @unique
+  phoneVerified  Boolean          @default(false)
+  address     String?
+  website     String?
+
+  shops       Shop[]
+  kyc         VendorKYC?
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([userId])
+  @@map("vendors")
+}
+
+// ---------------------
+// Vendor KYC (Main)
+// ---------------------
+model VendorKYC {
+  id             String           @id @default(uuid())
+  vendorId       String           @unique
+  vendor         Vendor           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  status         KYCStatus        @default(PENDING)
+  submittedAt    DateTime         @default(now())
+  reviewedAt     DateTime?
+
+  documents      KYCDocument[]
+  bankDetails    VendorBankDetails[]
+
+  @@index([vendorId])
+  @@map("vendor_kyc")
+}
+
+// ---------------------
+// KYC Documents (Multiple)
+// ---------------------
+model KYCDocument {
+  id             String            @id @default(uuid())
+  kycId          String
+  kyc            VendorKYC         @relation(fields: [kycId], references: [id], onDelete: Cascade)
+  documentType   KYCDocumentType
+  documentNumber String
+  frontImageURL  String?
+  backImageURL   String?
+  frontImageURL String?
+
+  uploadedAt     DateTime          @default(now())
+
+  @@index([kycId])
+  @@map("kyc_documents")
+}
+
+// ---------------------
+// Vendor Bank Details
+// ---------------------
+model VendorBankDetails {
+  id            String       @id @default(uuid())
+  kycId         String
+  kyc           VendorKYC    @relation(fields: [kycId], references: [id], onDelete: Cascade)
+
+  accountTitle  String
+  bankName      String
+  branchName    String?
+  branchCode    String?
+  iban          String?
+  accountNumber String
+
+  isPrimary     Boolean      @default(false)
+
+  createdAt     DateTime     @default(now())
+
+  @@index([kycId])
+  @@map("vendor_bank_details")
+}
+
+// ---------------------
+// OTP for Phone Verification
+// ---------------------
+model PhoneOTP {
+  id          String     @id @default(uuid())
+  vendorId    String
+  phoneNumber String
+
+  otpCode     String
+  expiresAt   DateTime
+  verified    Boolean    @default(false)
+  attempts    Int        @default(0)
+
+  createdAt   DateTime   @default(now())
+
+  vendor      Vendor     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([phoneNumber])
+  @@map("phone_otp")
+}
+
+// ---------------------
+// Shops
+// ---------------------
+model Shop {
+  id          String      @id @default(uuid())
+  vendorId    String
+  vendor      Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  address     String?
+  logo        String?
+
+  products    Product[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([vendorId])
+  @@map("shops")
+}
+
+// ---------------------
+// Products
+// ---------------------
+model Product {
+  id          String           @id @default(uuid())
+  shopId      String
+  shop        Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  price       Float
+  discount    Float?
+  status      ProductStatus    @default(ACTIVE)
+
+  stock       Int              @default(0)
+  sku         String?          @unique
+
+  categoryId  String?
+  category    Category?        @relation(fields: [categoryId], references: [id])
+
+  images      ProductImage[]
+  variants    ProductVariant[]
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([shopId])
+  @@index([categoryId])
+  @@map("products")
+}
+
+// ---------------------
+// Product Images
+// ---------------------
+model ProductImage {
+  id         String      @id @default(uuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  url        String
+
+  createdAt  DateTime    @default(now())
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+// ---------------------
+// Product Variants
+// ---------------------
+model ProductVariant {
+  id          String      @id @default(uuid())
+  productId   String
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  name        String
+  value       String
+  priceDiff   Float?
+  stock       Int         @default(0)
+
+  createdAt   DateTime    @default(now())
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+// ---------------------
+// Category System
+// ---------------------
+model Category {
+  id       String       @id @default(uuid())
+  name     String       @unique
+  products Product[]
+
+  @@map("categories")
+}
