@@ -13,6 +13,12 @@ import type {
   ProductVariantResponse,
 } from '../types/shop.types.ts';
 
+type ProductStats = {
+  avgRating: number | null;
+  reviewCount: number;
+  totalSold: number;
+};
+
 export async function createProduct(
   shopId: string,
   data: CreateProductRequest
@@ -26,6 +32,7 @@ export async function createProduct(
     status: data.status ?? 'ACTIVE',
     stock: data.stock ?? 0,
     sku: data.sku ?? null,
+    deliveryCharge: data.deliveryCharge ?? 0,
   };
 
   if (data.categoryId) {
@@ -56,7 +63,8 @@ export async function createProduct(
     },
   });
 
-  return mapProductToDetailResponse(product);
+  const stats = await getProductStats(product.id);
+  return mapProductToDetailResponse(product, stats);
 }
 
 export async function getProductById(productId: string): Promise<ProductDetailResponse | null> {
@@ -73,7 +81,8 @@ export async function getProductById(productId: string): Promise<ProductDetailRe
     return null;
   }
 
-  return mapProductToDetailResponse(product);
+  const stats = await getProductStats(product.id);
+  return mapProductToDetailResponse(product, stats);
 }
 
 export async function getProductsByShopId(
@@ -119,8 +128,10 @@ export async function getProductsByShopId(
     prisma.product.count({ where }),
   ]);
 
+  const statsMap = await getProductsStatsMap(products.map((p) => p.id));
+
   return {
-    products: products.map(mapProductToResponse),
+    products: products.map((p) => mapProductToResponse(p, statsMap[p.id])),
     total,
     page,
     limit,
@@ -141,6 +152,7 @@ export async function updateProduct(
   if (data.status !== undefined) updateData.status = data.status;
   if (data.stock !== undefined) updateData.stock = data.stock;
   if (data.sku !== undefined) updateData.sku = data.sku;
+  if (data.deliveryCharge !== undefined) updateData.deliveryCharge = data.deliveryCharge;
   if (data.categoryId !== undefined) {
     updateData.category = data.categoryId ? { connect: { id: data.categoryId } } : { disconnect: true };
   }
@@ -252,7 +264,7 @@ export async function getProductShopId(productId: string): Promise<string | null
 }
 
 // Helper functions
-function mapProductToResponse(product: any): ProductResponse {
+function mapProductToResponse(product: any, stats?: ProductStats): ProductResponse {
   return {
     id: product.id,
     shopId: product.shopId,
@@ -260,18 +272,22 @@ function mapProductToResponse(product: any): ProductResponse {
     description: product.description,
     price: product.price,
     discount: product.discount,
+    deliveryCharge: product.deliveryCharge,
     status: product.status,
     stock: product.stock,
     sku: product.sku,
     categoryId: product.categoryId,
+    avgRating: stats?.avgRating ?? undefined,
+    reviewCount: stats?.reviewCount ?? undefined,
+    totalSold: stats?.totalSold ?? undefined,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
   };
 }
 
-function mapProductToDetailResponse(product: any): ProductDetailResponse {
+function mapProductToDetailResponse(product: any, stats?: ProductStats): ProductDetailResponse {
   return {
-    ...mapProductToResponse(product),
+    ...mapProductToResponse(product, stats),
     category: product.category
       ? {
           id: product.category.id,
@@ -294,4 +310,66 @@ function mapProductToDetailResponse(product: any): ProductDetailResponse {
       createdAt: v.createdAt,
     })),
   };
+}
+
+async function getProductStats(productId: string): Promise<ProductStats> {
+  const [reviewAgg, deliveredAgg] = await Promise.all([
+    prisma.productReview.aggregate({
+      where: { productId },
+      _avg: { rating: true },
+      _count: { rating: true },
+    }),
+    prisma.orderItem.aggregate({
+      where: { productId, status: 'DELIVERED' },
+      _sum: { quantity: true },
+    }),
+  ]);
+
+  return {
+    avgRating: reviewAgg._avg.rating ?? null,
+    reviewCount: reviewAgg._count.rating,
+    totalSold: deliveredAgg._sum.quantity ?? 0,
+  };
+}
+
+async function getProductsStatsMap(productIds: string[]): Promise<Record<string, ProductStats>> {
+  if (productIds.length === 0) return {};
+
+  const [reviewGroup, deliveredGroup] = await Promise.all([
+    prisma.productReview.groupBy({
+      by: ['productId'],
+      where: { productId: { in: productIds } },
+      _avg: { rating: true },
+      _count: { rating: true },
+    }),
+    prisma.orderItem.groupBy({
+      by: ['productId'],
+      where: { productId: { in: productIds }, status: 'DELIVERED' },
+      _sum: { quantity: true },
+    }),
+  ]);
+
+  const reviewMap = reviewGroup.reduce<Record<string, ProductStats>>((acc, row) => {
+    acc[row.productId] = {
+      avgRating: row._avg.rating ?? null,
+      reviewCount: row._count.rating,
+      totalSold: 0,
+    };
+    return acc;
+  }, {});
+
+  deliveredGroup.forEach((row) => {
+    const current = reviewMap[row.productId] ?? { avgRating: null, reviewCount: 0, totalSold: 0 };
+    current.totalSold = row._sum.quantity ?? 0;
+    reviewMap[row.productId] = current;
+  });
+
+  // Ensure all ids present
+  productIds.forEach((id) => {
+    if (!reviewMap[id]) {
+      reviewMap[id] = { avgRating: null, reviewCount: 0, totalSold: 0 };
+    }
+  });
+
+  return reviewMap;
 }

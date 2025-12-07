@@ -49,6 +49,7 @@ export interface CreateProductRequest {
   status?: ProductStatus;
   stock?: number;
   sku?: string;
+  deliveryCharge?: number;
   categoryId?: string;
   images?: string[];
   variants?: ProductVariantInput[];
@@ -62,6 +63,7 @@ export interface UpdateProductRequest {
   status?: ProductStatus;
   stock?: number;
   sku?: string;
+  deliveryCharge?: number;
   categoryId?: string;
 }
 
@@ -80,10 +82,14 @@ export interface ProductResponse {
   description: string | null;
   price: number;
   discount: number | null;
+  deliveryCharge: number;
   status: ProductStatus;
   stock: number;
   sku: string | null;
   categoryId: string | null;
+  avgRating?: number | undefined;
+  reviewCount?: number | undefined;
+  totalSold?: number | undefined;
   createdAt: Date;
   updatedAt: Date;
 }

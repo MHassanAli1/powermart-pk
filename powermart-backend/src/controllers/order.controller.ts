@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../types/express.types.ts';
 import * as orderService from '../services/order.service.ts';
-import type { OrderFilters } from '../types/order.types.ts';
+import type { OrderFilters, UpdateOrderItemStatusRequest } from '../types/order.types.ts';
 
 export async function createOrder(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -122,6 +122,42 @@ export async function updatePaymentStatus(req: AuthenticatedRequest, res: Respon
   }
 }
 
+export async function updateOrderItemStatus(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Authentication required' });
+      return;
+    }
+
+    const orderId = req.params.orderId;
+    const orderItemId = req.params.orderItemId;
+    if (!orderId || !orderItemId) {
+      res.status(400).json({ success: false, error: 'Order ID and Order Item ID are required' });
+      return;
+    }
+
+    const payload: UpdateOrderItemStatusRequest = {
+      ...req.body,
+      estimatedDelivery: req.body.estimatedDelivery
+        ? new Date(req.body.estimatedDelivery)
+        : undefined,
+    };
+
+    const order = await orderService.updateOrderItemStatus(
+      orderId,
+      orderItemId,
+      payload,
+      req.user.userId
+    );
+
+    res.status(200).json({ success: true, data: order });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update order item status';
+    const statusCode = message.includes('Unauthorized') ? 403 : message.includes('not found') ? 404 : 400;
+    res.status(statusCode).json({ success: false, error: message });
+  }
+}
+
 export async function cancelOrder(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     if (!req.user) {
@@ -140,6 +176,25 @@ export async function cancelOrder(req: AuthenticatedRequest, res: Response): Pro
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to cancel order';
     const statusCode = message.includes('Unauthorized') ? 403 : message.includes('not found') ? 404 : 400;
+    res.status(statusCode).json({ success: false, error: message });
+  }
+}
+
+/**
+ * Create order from cart (checkout)
+ */
+export async function checkoutFromCart(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Authentication required' });
+      return;
+    }
+
+    const order = await orderService.checkoutFromCart(req.user.userId, req.body);
+    res.status(201).json({ success: true, data: order });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to checkout';
+    const statusCode = message.includes('not found') ? 404 : 400;
     res.status(statusCode).json({ success: false, error: message });
   }
 }

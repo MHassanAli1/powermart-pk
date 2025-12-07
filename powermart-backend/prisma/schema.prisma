@@ -64,6 +64,15 @@ enum PaymentMethod {
   CARD
 }
 
+enum OrderItemStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
 // ---------------------
 // User & Auth
 // ---------------------
@@ -84,6 +93,8 @@ model User {
   vendor         Vendor?
   orders         Order[]
   orderAddresses OrderAddress[]
+  reviews        ProductReview[]
+  cart           Cart?
 
   @@index([email])
   @@map("users")
@@ -249,12 +260,16 @@ model Product {
   stock       Int              @default(0)
   sku         String?          @unique
 
+  deliveryCharge Float         @default(0)
+
   categoryId  String?
   category    Category?        @relation(fields: [categoryId], references: [id])
 
   images      ProductImage[]
   variants    ProductVariant[]
   orderItems  OrderItem[]
+  reviews     ProductReview[]
+  cartItems   CartItem[]
 
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -294,11 +309,73 @@ model ProductVariant {
   stock       Int         @default(0)
 
   orderItems  OrderItem[]
+  cartItems   CartItem[]
 
   createdAt   DateTime    @default(now())
 
   @@index([productId])
   @@map("product_variants")
+}
+
+// ---------------------
+// Product Reviews
+// ---------------------
+model ProductReview {
+  id                 String        @id @default(uuid())
+  productId          String
+  product            Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId            String
+  order              Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItemId        String
+  orderItem          OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  rating             Int
+  comment            String?
+  isVerifiedPurchase Boolean       @default(true)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@unique([productId, userId, orderItemId])
+  @@index([productId])
+  @@index([userId])
+  @@index([orderId])
+  @@index([orderItemId])
+  @@map("product_reviews")
+}
+
+// ---------------------
+// Cart
+// ---------------------
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("carts")
+}
+
+model CartItem {
+  id          String     @id @default(uuid())
+  cartId      String
+  cart        Cart       @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  quantity    Int
+  priceSnapshot Float
+  deliveryChargeSnapshot Float
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([cartId, productId, variantId])
+  @@index([cartId])
+  @@index([productId])
+  @@map("cart_items")
 }
 
 // ---------------------
@@ -370,6 +447,12 @@ model Order {
   paymentStatus     PaymentStatus?  
   paymentMethod     PaymentMethod?
 
+  trackingCode      String?
+  carrier           String?
+  trackingUrl       String?
+  estimatedDelivery DateTime?
+  deliveredAt       DateTime?
+
   subtotalAmount    Float
   discountAmount    Float          @default(0)
   shippingFee       Float          @default(0)
@@ -381,6 +464,7 @@ model Order {
   shippingAddress   OrderAddress   @relation(fields: [shippingAddressId], references: [id], onDelete: Cascade)
 
   items             OrderItem[]
+  reviews           ProductReview[]
 
   placedAt          DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
@@ -409,7 +493,16 @@ model OrderItem {
 
   quantity    Int            @default(1)
   unitPrice   Float
+  deliveryCharge Float        @default(0)
   totalPrice  Float
+
+  status      OrderItemStatus @default(PENDING)
+  trackingCode String?
+  carrier     String?
+  trackingUrl String?
+  deliveredAt DateTime?
+
+  reviews     ProductReview[]
 
   createdAt   DateTime       @default(now())
 

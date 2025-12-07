@@ -194,7 +194,7 @@ export async function getCategoryBreadcrumb(categoryId: string): Promise<Categor
   let currentId: string | null = categoryId;
 
   while (currentId) {
-    const category = await prisma.category.findUnique({
+    const category: { id: string; name: string; slug: string; parentId: string | null } | null = await prisma.category.findUnique({
       where: { id: currentId },
       select: { id: true, name: true, slug: true, parentId: true },
     });

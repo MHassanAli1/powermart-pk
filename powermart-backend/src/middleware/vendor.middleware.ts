@@ -2,6 +2,64 @@ import type { Response, NextFunction } from 'express';
 import type { AuthenticatedRequest } from '../types/express.types.ts';
 import { UserRole } from '../../prisma/generated/enums.ts';
 import { prisma } from '../../lib/prisma.ts';
+import { verifyAccessToken } from '../utils/jwt.util.ts';
+
+/**
+ * Combined middleware to authenticate user and verify they are a vendor with vendor profile attached
+ * Use this for vendor-only routes that need the vendor object
+ */
+export function authenticateVendor(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void {
+  // First authenticate the user
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    res.status(401).json({ success: false, error: 'No authorization header provided' });
+    return;
+  }
+
+  const parts = authHeader.split(' ');
+  if (parts.length !== 2 || parts[0] !== 'Bearer') {
+    res.status(401).json({ success: false, error: 'Invalid authorization header format' });
+    return;
+  }
+
+  const token = parts[1];
+  if (!token) {
+    res.status(401).json({ success: false, error: 'Token not provided' });
+    return;
+  }
+
+  try {
+    const payload = verifyAccessToken(token);
+    req.user = payload;
+
+    // Check if user is a vendor
+    if (payload.role !== UserRole.VENDOR) {
+      res.status(403).json({ success: false, error: 'Vendor access required' });
+      return;
+    }
+
+    // Attach vendor profile
+    prisma.vendor.findUnique({
+      where: { userId: payload.userId },
+    }).then(vendor => {
+      if (!vendor) {
+        res.status(404).json({ success: false, error: 'Vendor profile not found' });
+        return;
+      }
+      (req as any).vendor = vendor;
+      next();
+    }).catch(() => {
+      res.status(500).json({ success: false, error: 'Internal server error' });
+    });
+  } catch {
+    res.status(401).json({ success: false, error: 'Invalid or expired token' });
+  }
+}
 
 /**
  * Middleware to check if the authenticated user is a vendor

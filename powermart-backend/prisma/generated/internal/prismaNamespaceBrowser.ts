@@ -62,6 +62,9 @@ export const ModelName = {
   Product: 'Product',
   ProductImage: 'ProductImage',
   ProductVariant: 'ProductVariant',
+  ProductReview: 'ProductReview',
+  Cart: 'Cart',
+  CartItem: 'CartItem',
   Category: 'Category',
   OrderAddress: 'OrderAddress',
   Order: 'Order',
@@ -205,6 +208,7 @@ export const ProductScalarFieldEnum = {
   status: 'status',
   stock: 'stock',
   sku: 'sku',
+  deliveryCharge: 'deliveryCharge',
   categoryId: 'categoryId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -234,6 +238,47 @@ export const ProductVariantScalarFieldEnum = {
 } as const
 
 export type ProductVariantScalarFieldEnum = (typeof ProductVariantScalarFieldEnum)[keyof typeof ProductVariantScalarFieldEnum]
+
+
+export const ProductReviewScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  userId: 'userId',
+  orderId: 'orderId',
+  orderItemId: 'orderItemId',
+  rating: 'rating',
+  comment: 'comment',
+  isVerifiedPurchase: 'isVerifiedPurchase',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProductReviewScalarFieldEnum = (typeof ProductReviewScalarFieldEnum)[keyof typeof ProductReviewScalarFieldEnum]
+
+
+export const CartScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CartScalarFieldEnum = (typeof CartScalarFieldEnum)[keyof typeof CartScalarFieldEnum]
+
+
+export const CartItemScalarFieldEnum = {
+  id: 'id',
+  cartId: 'cartId',
+  productId: 'productId',
+  variantId: 'variantId',
+  quantity: 'quantity',
+  priceSnapshot: 'priceSnapshot',
+  deliveryChargeSnapshot: 'deliveryChargeSnapshot',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CartItemScalarFieldEnum = (typeof CartItemScalarFieldEnum)[keyof typeof CartItemScalarFieldEnum]
 
 
 export const CategoryScalarFieldEnum = {
@@ -277,6 +322,11 @@ export const OrderScalarFieldEnum = {
   status: 'status',
   paymentStatus: 'paymentStatus',
   paymentMethod: 'paymentMethod',
+  trackingCode: 'trackingCode',
+  carrier: 'carrier',
+  trackingUrl: 'trackingUrl',
+  estimatedDelivery: 'estimatedDelivery',
+  deliveredAt: 'deliveredAt',
   subtotalAmount: 'subtotalAmount',
   discountAmount: 'discountAmount',
   shippingFee: 'shippingFee',
@@ -298,7 +348,13 @@ export const OrderItemScalarFieldEnum = {
   variantId: 'variantId',
   quantity: 'quantity',
   unitPrice: 'unitPrice',
+  deliveryCharge: 'deliveryCharge',
   totalPrice: 'totalPrice',
+  status: 'status',
+  trackingCode: 'trackingCode',
+  carrier: 'carrier',
+  trackingUrl: 'trackingUrl',
+  deliveredAt: 'deliveredAt',
   createdAt: 'createdAt'
 } as const
 

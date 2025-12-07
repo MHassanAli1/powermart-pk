@@ -39,7 +39,11 @@ export async function getAllUsers(req: AuthenticatedRequest, res: Response): Pro
  */
 export async function getUserById(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const userId = parseInt(req.params.id, 10);
+    const userId = req.params.id;
+    if (!userId) {
+      res.status(400).json({ success: false, error: 'User ID is required' });
+      return;
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -81,7 +85,11 @@ export async function getUserById(req: AuthenticatedRequest, res: Response): Pro
  */
 export async function updateUser(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const userId = parseInt(req.params.id, 10);
+    const userId = req.params.id;
+    if (!userId) {
+      res.status(400).json({ success: false, error: 'User ID is required' });
+      return;
+    }
     const { name, role, status, isVerified } = req.body;
 
     const user = await prisma.user.update({
@@ -122,7 +130,11 @@ export async function updateUser(req: AuthenticatedRequest, res: Response): Prom
  */
 export async function deleteUser(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const userId = parseInt(req.params.id, 10);
+    const userId = req.params.id;
+    if (!userId) {
+      res.status(400).json({ success: false, error: 'User ID is required' });
+      return;
+    }
 
     await prisma.user.delete({
       where: { id: userId },

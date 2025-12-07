@@ -33,6 +33,13 @@ export function authenticate(
     }
 
     const token = parts[1];
+    if (!token) {
+      res.status(401).json({
+        success: false,
+        error: 'Token not provided',
+      });
+      return;
+    }
 
     try {
       const payload = verifyAccessToken(token);

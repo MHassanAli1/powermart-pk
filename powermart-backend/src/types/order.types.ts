@@ -1,4 +1,4 @@
-import type { OrderStatus, PaymentStatus, PaymentMethod } from '../../prisma/generated/enums.ts';
+import type { OrderStatus, PaymentStatus, PaymentMethod, OrderItemStatus } from '../../prisma/generated/enums.ts';
 
 // Request DTOs
 export interface CreateOrderRequest {
@@ -12,6 +12,14 @@ export interface OrderItemRequest {
   productId: string;
   variantId?: string;
   quantity: number;
+}
+
+export interface UpdateOrderItemStatusRequest {
+  status: OrderItemStatus;
+  trackingCode?: string;
+  carrier?: string;
+  trackingUrl?: string;
+  estimatedDelivery?: Date;
 }
 
 export interface UpdateOrderStatusRequest {
@@ -48,7 +56,13 @@ export interface OrderItemResponse {
   variantId: string | null;
   quantity: number;
   unitPrice: number;
+  deliveryCharge: number;
   totalPrice: number;
+  status: OrderItemStatus;
+  trackingCode: string | null;
+  carrier: string | null;
+  trackingUrl: string | null;
+  deliveredAt: Date | null;
   createdAt: Date;
   product?: {
     id: string;
@@ -70,6 +84,11 @@ export interface OrderResponse {
   status: OrderStatus;
   paymentStatus: PaymentStatus | null;
   paymentMethod: PaymentMethod | null;
+  trackingCode: string | null;
+  carrier: string | null;
+  trackingUrl: string | null;
+  estimatedDelivery: Date | null;
+  deliveredAt: Date | null;
   subtotalAmount: number;
   discountAmount: number;
   shippingFee: number;

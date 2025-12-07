@@ -7,7 +7,16 @@ import type {
   OrderFilters,
   UpdateOrderStatusRequest,
   UpdatePaymentStatusRequest,
+  UpdateOrderItemStatusRequest,
 } from '../types/order.types.ts';
+import * as cartService from './cart.service.ts';
+
+// ===== Cart Checkout Types =====
+export interface CheckoutFromCartRequest {
+  shippingAddressId: string;
+  paymentMethod?: 'COD' | 'CARD';
+  notes?: string;
+}
 
 /**
  * Generate a unique order number
@@ -78,33 +87,44 @@ export async function createOrder(
     })
   );
 
-  // Calculate totals
+  // Calculate totals with per-item delivery charge
   let subtotalAmount = 0;
   let discountAmount = 0;
+  let deliveryTotal = 0;
 
-  const orderItems = itemsWithDetails.map((item) => {
+  const orderItemsData = itemsWithDetails.map((item) => {
     const basePrice = item.product.price;
     const variantPriceDiff = item.variant?.priceDiff ?? 0;
     const unitPrice = basePrice + variantPriceDiff;
-    const totalPrice = unitPrice * item.quantity;
+    const itemSubtotal = unitPrice * item.quantity;
+    const discount = item.product.discount ? (item.product.discount / 100) * itemSubtotal : 0;
+    const deliveryCharge = item.product.deliveryCharge ?? 0;
+    const deliveryLine = deliveryCharge * item.quantity;
+    const totalPrice = itemSubtotal - discount + deliveryLine;
 
-    const discount = item.product.discount ? (item.product.discount / 100) * totalPrice : 0;
-
-    subtotalAmount += totalPrice;
+    subtotalAmount += itemSubtotal;
     discountAmount += discount;
+    deliveryTotal += deliveryLine;
 
-    return {
-      productId: item.product.id,
-      shopId: item.product.shopId,
-      variantId: item.variant?.id ?? null,
+    const itemData: any = {
+      product: { connect: { id: item.product.id } },
+      shop: { connect: { id: item.product.shopId } },
       quantity: item.quantity,
       unitPrice,
-      totalPrice: totalPrice - discount,
+      deliveryCharge,
+      totalPrice,
+      status: 'PENDING',
     };
+
+    if (item.variant) {
+      itemData.variant = { connect: { id: item.variant.id } };
+    }
+
+    return itemData;
   });
 
-  const shippingFee = 0; // Can be calculated based on address/products
-  const totalAmount = subtotalAmount - discountAmount + shippingFee;
+  const shippingFee = 0; // kept at order-level for compatibility
+  const totalAmount = subtotalAmount - discountAmount + deliveryTotal + shippingFee;
 
   // Create order
   const order = await prisma.order.create({
@@ -121,7 +141,7 @@ export async function createOrder(
       notes: data.notes ?? null,
       shippingAddressId: data.shippingAddressId,
       items: {
-        create: orderItems,
+        create: orderItemsData,
       },
     },
     include: {
@@ -245,7 +265,12 @@ export async function getOrdersByUserId(
         placedAt: 'desc',
       },
       include: {
-        items: true,
+        items: {
+          include: {
+            product: { select: { id: true, name: true, sku: true } },
+            variant: { select: { id: true, name: true, value: true } },
+          },
+        },
         shippingAddress: true,
       },
     }),
@@ -374,6 +399,78 @@ export async function updatePaymentStatus(
 }
 
 /**
+ * Update a single order item status/tracking (vendor-only, must own the product's shop)
+ */
+export async function updateOrderItemStatus(
+  orderId: string,
+  orderItemId: string,
+  data: UpdateOrderItemStatusRequest,
+  vendorUserId: string
+): Promise<OrderDetailResponse> {
+  const orderItem = await prisma.orderItem.findFirst({
+    where: { id: orderItemId, orderId },
+    include: {
+      product: {
+        include: {
+          shop: {
+            include: {
+              vendor: {
+                select: { userId: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!orderItem) {
+    throw new Error('Order item not found');
+  }
+
+  if (!orderItem.product.shop.vendor || orderItem.product.shop.vendor.userId !== vendorUserId) {
+    throw new Error('Unauthorized: You do not own this product');
+  }
+
+  const updateData: any = {};
+  if (data.status !== undefined) updateData.status = data.status;
+  if (data.trackingCode !== undefined) updateData.trackingCode = data.trackingCode;
+  if (data.carrier !== undefined) updateData.carrier = data.carrier;
+  if (data.trackingUrl !== undefined) updateData.trackingUrl = data.trackingUrl;
+  if (data.estimatedDelivery !== undefined) {
+    updateData.estimatedDelivery = new Date(data.estimatedDelivery);
+  }
+  if (data.status === 'DELIVERED') {
+    updateData.deliveredAt = new Date();
+  }
+
+  await prisma.orderItem.update({
+    where: { id: orderItemId },
+    data: updateData,
+  });
+
+  // Return updated order with items
+  const updatedOrder = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      items: {
+        include: {
+          product: { select: { id: true, name: true, sku: true } },
+          variant: { select: { id: true, name: true, value: true } },
+        },
+      },
+      shippingAddress: true,
+    },
+  });
+
+  if (!updatedOrder) {
+    throw new Error('Order not found after update');
+  }
+
+  return mapOrderToDetailResponse(updatedOrder);
+}
+
+/**
  * Cancel order
  */
 export async function cancelOrder(orderId: string, userId: string): Promise<OrderDetailResponse> {
@@ -456,6 +553,11 @@ function mapOrderToResponse(order: any): any {
     status: order.status,
     paymentStatus: order.paymentStatus,
     paymentMethod: order.paymentMethod,
+    trackingCode: order.trackingCode ?? null,
+    carrier: order.carrier ?? null,
+    trackingUrl: order.trackingUrl ?? null,
+    estimatedDelivery: order.estimatedDelivery ?? null,
+    deliveredAt: order.deliveredAt ?? null,
     subtotalAmount: order.subtotalAmount,
     discountAmount: order.discountAmount,
     shippingFee: order.shippingFee,
@@ -469,21 +571,167 @@ function mapOrderToResponse(order: any): any {
 
 function mapOrderToDetailResponse(order: any): OrderDetailResponse {
   return {
-    id: order.id,
-    userId: order.userId,
-    orderNumber: order.orderNumber,
-    status: order.status,
-    paymentStatus: order.paymentStatus,
-    paymentMethod: order.paymentMethod,
-    subtotalAmount: order.subtotalAmount,
-    discountAmount: order.discountAmount,
-    shippingFee: order.shippingFee,
-    totalAmount: order.totalAmount,
-    notes: order.notes,
-    shippingAddressId: order.shippingAddressId,
-    placedAt: order.placedAt,
-    updatedAt: order.updatedAt,
-    items: order.items || [],
+    ...mapOrderToResponse(order),
+    items:
+      order.items?.map((item: any) => ({
+        id: item.id,
+        orderId: item.orderId,
+        productId: item.productId,
+        shopId: item.shopId,
+        variantId: item.variantId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        deliveryCharge: item.deliveryCharge,
+        totalPrice: item.totalPrice,
+        status: item.status ?? 'PENDING',
+        trackingCode: item.trackingCode ?? null,
+        carrier: item.carrier ?? null,
+        trackingUrl: item.trackingUrl ?? null,
+        deliveredAt: item.deliveredAt ?? null,
+        createdAt: item.createdAt,
+        product: item.product
+          ? {
+              id: item.product.id,
+              name: item.product.name,
+              sku: item.product.sku,
+            }
+          : undefined,
+        variant: item.variant
+          ? {
+              id: item.variant.id,
+              name: item.variant.name,
+              value: item.variant.value,
+            }
+          : undefined,
+      })) ?? [],
     shippingAddress: order.shippingAddress,
   };
+}
+
+/**
+ * Create order from cart (checkout)
+ */
+export async function checkoutFromCart(
+  userId: string,
+  data: CheckoutFromCartRequest
+): Promise<OrderDetailResponse> {
+  // Validate cart
+  const validation = await cartService.validateCartForCheckout(userId);
+  if (!validation.valid) {
+    throw new Error(`Cart validation failed: ${validation.errors.join(', ')}`);
+  }
+
+  if (validation.cart.items.length === 0) {
+    throw new Error('Cart is empty');
+  }
+
+  // Validate shipping address
+  const shippingAddress = await prisma.orderAddress.findFirst({
+    where: {
+      id: data.shippingAddressId,
+      userId,
+    },
+  });
+
+  if (!shippingAddress) {
+    throw new Error('Shipping address not found or does not belong to this user');
+  }
+
+  // Get cart items with full details
+  const cartItems = await cartService.getCartItemsForOrder(userId);
+
+  // Build order items from cart
+  let subtotalAmount = 0;
+  let deliveryTotal = 0;
+
+  const orderItemsData = cartItems.map((item) => {
+    const unitPrice = item.priceSnapshot;
+    const deliveryCharge = item.deliveryChargeSnapshot;
+    const itemSubtotal = unitPrice * item.quantity;
+    const deliveryLine = deliveryCharge * item.quantity;
+    const totalPrice = itemSubtotal + deliveryLine;
+
+    subtotalAmount += itemSubtotal;
+    deliveryTotal += deliveryLine;
+
+    const itemData: any = {
+      product: { connect: { id: item.productId } },
+      shop: { connect: { id: item.product.shopId } },
+      quantity: item.quantity,
+      unitPrice,
+      deliveryCharge,
+      totalPrice,
+      status: 'PENDING',
+    };
+
+    if (item.variantId) {
+      itemData.variant = { connect: { id: item.variantId } };
+    }
+
+    return itemData;
+  });
+
+  const shippingFee = 0;
+  const discountAmount = 0;
+  const totalAmount = subtotalAmount + deliveryTotal + shippingFee - discountAmount;
+
+  // Create order
+  const order = await prisma.order.create({
+    data: {
+      userId,
+      orderNumber: generateOrderNumber(),
+      status: 'PENDING',
+      paymentStatus: data.paymentMethod ? 'PENDING' : null,
+      paymentMethod: data.paymentMethod ?? null,
+      subtotalAmount,
+      discountAmount,
+      shippingFee,
+      totalAmount,
+      notes: data.notes ?? null,
+      shippingAddressId: data.shippingAddressId,
+      items: {
+        create: orderItemsData,
+      },
+    },
+    include: {
+      items: {
+        include: {
+          product: { select: { id: true, name: true, sku: true } },
+          variant: { select: { id: true, name: true, value: true } },
+        },
+      },
+      shippingAddress: true,
+    },
+  });
+
+  // Update product stocks
+  await Promise.all(
+    cartItems.map((item) =>
+      prisma.product.update({
+        where: { id: item.productId },
+        data: {
+          stock: { decrement: item.quantity },
+        },
+      })
+    )
+  );
+
+  // Also decrement variant stock if applicable
+  await Promise.all(
+    cartItems
+      .filter((item) => item.variantId)
+      .map((item) =>
+        prisma.productVariant.update({
+          where: { id: item.variantId! },
+          data: {
+            stock: { decrement: item.quantity },
+          },
+        })
+      )
+  );
+
+  // Clear cart after successful order
+  await cartService.clearCartAfterOrder(userId);
+
+  return mapOrderToDetailResponse(order);
 }

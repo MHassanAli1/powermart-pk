@@ -6,6 +6,9 @@ import shopRoutes from './shop.routes.ts';
 import productRoutes from './product.routes.ts';
 import categoryRoutes from './category.routes.ts';
 import orderRoutes from './order.routes.ts';
+import reviewRoutes from './review.routes.ts';
+import cartRoutes from './cart.routes.ts';
+import uploadRoutes from './upload.routes.ts';
 
 const router = Router();
 
@@ -17,5 +20,8 @@ router.use('/shops', shopRoutes);
 router.use('/vendor', productRoutes); // Product routes under /vendor prefix
 router.use('/categories', categoryRoutes);
 router.use('/orders', orderRoutes);
+router.use('/reviews', reviewRoutes);
+router.use('/cart', cartRoutes);
+router.use('/upload', uploadRoutes);
 
 export default router;
