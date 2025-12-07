@@ -10,6 +10,8 @@
  */
 export type * from './models/User.ts'
 export type * from './models/RefreshToken.ts'
+export type * from './models/EmailOTP.ts'
+export type * from './models/PasswordResetToken.ts'
 export type * from './models/Vendor.ts'
 export type * from './models/VendorKYC.ts'
 export type * from './models/KYCDocument.ts'

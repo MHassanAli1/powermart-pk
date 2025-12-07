@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { prisma } from './lib/prisma.ts';
+import { initWhatsApp } from './lib/whatsapp.ts';
 import routes from './src/routes/index.ts';
 import { errorHandler, notFoundHandler } from './src/middleware/error.middleware.ts';
 
@@ -37,9 +38,12 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start server
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Initialize WhatsApp connection (shows QR code in terminal if needed)
+  await initWhatsApp();
 });
 
 // Graceful shutdown

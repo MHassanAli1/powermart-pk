@@ -17,6 +17,45 @@ export interface RefreshTokenRequest {
   refreshToken: string;
 }
 
+// Email verification
+export interface SendVerificationEmailRequest {
+  email: string;
+}
+
+export interface VerifyEmailRequest {
+  email: string;
+  otpCode: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
+}
+
+// Password reset
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+// Phone verification (for vendors)
+export interface SendPhoneOTPRequest {
+  phoneNumber: string;
+}
+
+export interface VerifyPhoneRequest {
+  phoneNumber: string;
+  otpCode: string;
+}
+
 // Response DTOs
 export interface UserResponse {
   id: string;
@@ -38,6 +77,11 @@ export interface AuthResponse {
 export interface TokenResponse {
   accessToken: string;
   refreshToken: string;
+}
+
+export interface MessageResponse {
+  success: boolean;
+  message: string;
 }
 
 // JWT Payload

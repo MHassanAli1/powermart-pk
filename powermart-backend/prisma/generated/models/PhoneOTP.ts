@@ -469,14 +469,6 @@ export type PhoneOTPUncheckedUpdateManyWithoutVendorNestedInput = {
   deleteMany?: Prisma.PhoneOTPScalarWhereInput | Prisma.PhoneOTPScalarWhereInput[]
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type PhoneOTPCreateWithoutVendorInput = {
   id?: string
   phoneNumber: string

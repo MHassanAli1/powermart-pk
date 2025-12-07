@@ -7,7 +7,25 @@ import {
   logoutUser,
   getUserById,
 } from '../services/auth.service.ts';
-import type { RegisterRequest, LoginRequest, RefreshTokenRequest } from '../types/auth.types.ts';
+import {
+  verifyEmailOTP,
+  resendEmailVerificationOTP,
+} from '../services/verification.service.ts';
+import {
+  requestPasswordReset,
+  resetPassword,
+  changePassword,
+} from '../services/password.service.ts';
+import type {
+  RegisterRequest,
+  LoginRequest,
+  RefreshTokenRequest,
+  VerifyEmailRequest,
+  ResendVerificationRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
+  ChangePasswordRequest,
+} from '../types/auth.types.ts';
 
 /**
  * Register a new user
@@ -145,6 +163,149 @@ export async function getProfile(req: AuthenticatedRequest, res: Response): Prom
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch profile',
+    });
+  }
+}
+
+/**
+ * Verify email with OTP
+ * POST /api/auth/verify-email
+ */
+export async function verifyEmail(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { email, otpCode }: VerifyEmailRequest = req.body;
+
+    if (!email || !otpCode) {
+      res.status(400).json({
+        success: false,
+        error: 'Email and OTP code are required',
+      });
+      return;
+    }
+
+    const result = await verifyEmailOTP(email, otpCode);
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Email verification failed',
+    });
+  }
+}
+
+/**
+ * Resend email verification OTP
+ * POST /api/auth/resend-verification
+ */
+export async function resendVerification(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { email }: ResendVerificationRequest = req.body;
+
+    if (!email) {
+      res.status(400).json({
+        success: false,
+        error: 'Email is required',
+      });
+      return;
+    }
+
+    const result = await resendEmailVerificationOTP(email);
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to resend verification',
+    });
+  }
+}
+
+/**
+ * Request password reset
+ * POST /api/auth/forgot-password
+ */
+export async function forgotPassword(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { email }: ForgotPasswordRequest = req.body;
+
+    if (!email) {
+      res.status(400).json({
+        success: false,
+        error: 'Email is required',
+      });
+      return;
+    }
+
+    const result = await requestPasswordReset(email);
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to process password reset',
+    });
+  }
+}
+
+/**
+ * Reset password with token
+ * POST /api/auth/reset-password
+ */
+export async function resetPasswordHandler(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { token, newPassword }: ResetPasswordRequest = req.body;
+
+    if (!token || !newPassword) {
+      res.status(400).json({
+        success: false,
+        error: 'Token and new password are required',
+      });
+      return;
+    }
+
+    const result = await resetPassword(token, newPassword);
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to reset password',
+    });
+  }
+}
+
+/**
+ * Change password (authenticated)
+ * POST /api/auth/change-password
+ */
+export async function changePasswordHandler(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+      });
+      return;
+    }
+
+    const { currentPassword, newPassword }: ChangePasswordRequest = req.body;
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({
+        success: false,
+        error: 'Current password and new password are required',
+      });
+      return;
+    }
+
+    const result = await changePassword(req.user.userId, currentPassword, newPassword);
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to change password',
     });
   }
 }

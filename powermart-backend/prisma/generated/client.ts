@@ -50,6 +50,16 @@ export type User = Prisma.UserModel
  */
 export type RefreshToken = Prisma.RefreshTokenModel
 /**
+ * Model EmailOTP
+ * 
+ */
+export type EmailOTP = Prisma.EmailOTPModel
+/**
+ * Model PasswordResetToken
+ * 
+ */
+export type PasswordResetToken = Prisma.PasswordResetTokenModel
+/**
  * Model Vendor
  * 
  */

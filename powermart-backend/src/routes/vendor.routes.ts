@@ -106,4 +106,57 @@ router.get(
   vendorController.getKYCStatus
 );
 
+// Phone verification routes
+const phoneVerificationValidation = [
+  body('phoneNumber')
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .matches(/^\+?[0-9]{10,15}$/)
+    .withMessage('Invalid phone number format'),
+];
+
+const verifyPhoneOTPValidation = [
+  body('phoneNumber')
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .matches(/^\+?[0-9]{10,15}$/)
+    .withMessage('Invalid phone number format'),
+  body('otpCode')
+    .notEmpty()
+    .withMessage('OTP code is required')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('OTP must be 6 digits'),
+];
+
+// Send phone OTP for verification
+router.post(
+  '/phone/send-otp',
+  authenticate,
+  isVendor,
+  attachVendor,
+  phoneVerificationValidation,
+  validate,
+  vendorController.sendPhoneOTP
+);
+
+// Verify phone OTP
+router.post(
+  '/phone/verify',
+  authenticate,
+  isVendor,
+  attachVendor,
+  verifyPhoneOTPValidation,
+  validate,
+  vendorController.verifyPhone
+);
+
+// Get phone verification status
+router.get(
+  '/phone/status',
+  authenticate,
+  isVendor,
+  attachVendor,
+  vendorController.getPhoneStatus
+);
+
 export default router;

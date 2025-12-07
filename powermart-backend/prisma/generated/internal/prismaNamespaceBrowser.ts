@@ -53,6 +53,8 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   User: 'User',
   RefreshToken: 'RefreshToken',
+  EmailOTP: 'EmailOTP',
+  PasswordResetToken: 'PasswordResetToken',
   Vendor: 'Vendor',
   VendorKYC: 'VendorKYC',
   KYCDocument: 'KYCDocument',
@@ -113,6 +115,32 @@ export const RefreshTokenScalarFieldEnum = {
 } as const
 
 export type RefreshTokenScalarFieldEnum = (typeof RefreshTokenScalarFieldEnum)[keyof typeof RefreshTokenScalarFieldEnum]
+
+
+export const EmailOTPScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  email: 'email',
+  otpCode: 'otpCode',
+  expiresAt: 'expiresAt',
+  verified: 'verified',
+  attempts: 'attempts',
+  createdAt: 'createdAt'
+} as const
+
+export type EmailOTPScalarFieldEnum = (typeof EmailOTPScalarFieldEnum)[keyof typeof EmailOTPScalarFieldEnum]
+
+
+export const PasswordResetTokenScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  token: 'token',
+  expiresAt: 'expiresAt',
+  used: 'used',
+  createdAt: 'createdAt'
+} as const
+
+export type PasswordResetTokenScalarFieldEnum = (typeof PasswordResetTokenScalarFieldEnum)[keyof typeof PasswordResetTokenScalarFieldEnum]
 
 
 export const VendorScalarFieldEnum = {

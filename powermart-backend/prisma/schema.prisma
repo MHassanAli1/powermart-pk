@@ -89,12 +89,14 @@ model User {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
-  refreshTokens  RefreshToken[]
-  vendor         Vendor?
-  orders         Order[]
-  orderAddresses OrderAddress[]
-  reviews        ProductReview[]
-  cart           Cart?
+  refreshTokens       RefreshToken[]
+  emailOTPs           EmailOTP[]
+  passwordResetTokens PasswordResetToken[]
+  vendor              Vendor?
+  orders              Order[]
+  orderAddresses      OrderAddress[]
+  reviews             ProductReview[]
+  cart                Cart?
 
   @@index([email])
   @@map("users")
@@ -111,6 +113,42 @@ model RefreshToken {
   @@index([userId])
   @@index([token])
   @@map("refresh_tokens")
+}
+
+// ---------------------
+// Email Verification OTP
+// ---------------------
+model EmailOTP {
+  id          String     @id @default(uuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email       String
+  otpCode     String
+  expiresAt   DateTime
+  verified    Boolean    @default(false)
+  attempts    Int        @default(0)
+  createdAt   DateTime   @default(now())
+
+  @@index([userId])
+  @@index([email])
+  @@map("email_otp")
+}
+
+// ---------------------
+// Password Reset Token
+// ---------------------
+model PasswordResetToken {
+  id          String     @id @default(uuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token       String     @unique
+  expiresAt   DateTime
+  used        Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@map("password_reset_tokens")
 }
 
 // ---------------------

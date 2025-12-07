@@ -6,6 +6,7 @@ import {
   verifyRefreshToken,
   getRefreshTokenExpiration,
 } from '../utils/jwt.util.ts';
+import { sendEmailVerificationOTP } from './verification.service.ts';
 import type {
   RegisterRequest,
   LoginRequest,
@@ -85,6 +86,11 @@ export async function registerUser(data: RegisterRequest): Promise<AuthResponse>
       userId: user.id,
       expiresAt: getRefreshTokenExpiration(),
     },
+  });
+
+  // Send verification email (fire and forget - don't block registration)
+  sendEmailVerificationOTP(user.id, user.email, user.name).catch((err) => {
+    console.error('Failed to send verification email:', err);
   });
 
   return {

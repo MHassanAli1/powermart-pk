@@ -15,6 +15,10 @@ build/
 
 # Prisma generated client (can always be regenerated)
 prisma/generated/
+
+# WhatsApp session (contains sensitive auth credentials)
+whatsapp-session/
+
 # Environment & local config
 .env
 .env.*
